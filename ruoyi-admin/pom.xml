@@ -54,6 +54,11 @@
             <artifactId>ruoyi-generator</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>com.ruoyi</groupId>
+            <artifactId>ruoyi-campus</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>
