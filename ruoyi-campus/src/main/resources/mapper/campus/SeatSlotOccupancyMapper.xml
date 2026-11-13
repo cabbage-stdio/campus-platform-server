@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.campus.mapper.SeatSlotOccupancyMapper">
+    
+    <resultMap type="SeatSlotOccupancy" id="SeatSlotOccupancyResult">
+        <result property="id"    column="id"    />
+        <result property="bookingId"    column="booking_id"    />
+        <result property="bookingItemId"    column="booking_item_id"    />
+        <result property="seatId"    column="seat_id"    />
+        <result property="userId"    column="user_id"    />
+        <result property="bookingDate"    column="booking_date"    />
+        <result property="slotNo"    column="slot_no"    />
+        <result property="createTime"    column="create_time"    />
+    </resultMap>
+
+    <sql id="selectSeatSlotOccupancyVo">
+        select id, booking_id, booking_item_id, seat_id, user_id, booking_date, slot_no, create_time from seat_slot_occupancy
+    </sql>
+
+    <select id="selectSeatSlotOccupancyList" parameterType="SeatSlotOccupancy" resultMap="SeatSlotOccupancyResult">
+        <include refid="selectSeatSlotOccupancyVo"/>
+        <where>  
+            <if test="bookingId != null "> and booking_id = #{bookingId}</if>
+            <if test="bookingItemId != null "> and booking_item_id = #{bookingItemId}</if>
+            <if test="seatId != null "> and seat_id = #{seatId}</if>
+            <if test="userId != null "> and user_id = #{userId}</if>
+            <if test="bookingDate != null "> and booking_date = #{bookingDate}</if>
+            <if test="slotNo != null "> and slot_no = #{slotNo}</if>
+        </where>
+    </select>
+    
+    <select id="selectSeatSlotOccupancyById" parameterType="Long" resultMap="SeatSlotOccupancyResult">
+        <include refid="selectSeatSlotOccupancyVo"/>
+        where id = #{id}
+    </select>
+    <select id="selectOccupancyByFloor"
+            parameterType="com.ruoyi.campus.dto.SeatBookingListDTO"
+            resultMap="SeatSlotOccupancyResult">
+        SELECT o.seat_id, o.slot_no
+        FROM seat_slot_occupancy o
+        INNER JOIN seat s ON s.id = o.seat_id
+        WHERE s.area_id = #{areaId}
+          AND s.floor_no = #{floorNo}
+          AND o.booking_date = #{bookingDate}
+        ORDER BY o.seat_id, o.slot_no
+    </select>
+
+    <insert id="insertSeatSlotOccupancy" parameterType="SeatSlotOccupancy" useGeneratedKeys="true" keyProperty="id">
+        insert into seat_slot_occupancy
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bookingId != null">booking_id,</if>
+            <if test="bookingItemId != null">booking_item_id,</if>
+            <if test="seatId != null">seat_id,</if>
+            <if test="userId != null">user_id,</if>
+            <if test="bookingDate != null">booking_date,</if>
+            <if test="slotNo != null">slot_no,</if>
+            <if test="createTime != null">create_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="bookingId != null">#{bookingId},</if>
+            <if test="bookingItemId != null">#{bookingItemId},</if>
+            <if test="seatId != null">#{seatId},</if>
+            <if test="userId != null">#{userId},</if>
+            <if test="bookingDate != null">#{bookingDate},</if>
+            <if test="slotNo != null">#{slotNo},</if>
+            <if test="createTime != null">#{createTime},</if>
+         </trim>
+    </insert>
+    <insert id="insertSeatSlotOccupancyBatch" useGeneratedKeys="true" keyProperty="id">
+        insert into seat_slot_occupancy (booking_id, booking_item_id, seat_id, user_id, booking_date, slot_no, create_time)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.bookingId}, #{item.bookingItemId}, #{item.seatId}, #{item.userId}, #{item.bookingDate}, #{item.slotNo}, #{item.createTime})
+        </foreach>
+    </insert>
+
+    <update id="updateSeatSlotOccupancy" parameterType="SeatSlotOccupancy">
+        update seat_slot_occupancy
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="bookingId != null">booking_id = #{bookingId},</if>
+            <if test="bookingItemId != null">booking_item_id = #{bookingItemId},</if>
+            <if test="seatId != null">seat_id = #{seatId},</if>
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="bookingDate != null">booking_date = #{bookingDate},</if>
+            <if test="slotNo != null">slot_no = #{slotNo},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteSeatSlotOccupancyById" parameterType="Long">
+        delete from seat_slot_occupancy where id = #{id}
+    </delete>
+
+    <delete id="deleteSeatSlotOccupancyByIds" parameterType="String">
+        delete from seat_slot_occupancy where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <delete id="deleteByBookingId">
+        DELETE FROM seat_slot_occupancy
+        WHERE booking_id = #{bookingId}
+    </delete>
+</mapper>

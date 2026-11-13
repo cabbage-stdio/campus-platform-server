@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.campus.mapper.SeatBookingItemMapper">
+    
+    <resultMap type="SeatBookingItem" id="SeatBookingItemResult">
+        <result property="id"    column="id"    />
+        <result property="bookingId"    column="booking_id"    />
+        <result property="slotNo"    column="slot_no"    />
+        <result property="startTime"    column="start_time"    />
+        <result property="endTime"    column="end_time"    />
+        <result property="createTime"    column="create_time"    />
+    </resultMap>
+
+    <sql id="selectSeatBookingItemVo">
+        select id, booking_id, slot_no, start_time, end_time, create_time from seat_booking_item
+    </sql>
+
+    <select id="selectSeatBookingItemList" parameterType="SeatBookingItem" resultMap="SeatBookingItemResult">
+        <include refid="selectSeatBookingItemVo"/>
+        <where>  
+            <if test="bookingId != null "> and booking_id = #{bookingId}</if>
+        </where>
+    </select>
+    
+    <select id="selectSeatBookingItemById" parameterType="Long" resultMap="SeatBookingItemResult">
+        <include refid="selectSeatBookingItemVo"/>
+        where id = #{id}
+    </select>
+
+    <select id="selectByBookingIds" resultMap="SeatBookingItemResult">
+        <include refid="selectSeatBookingItemVo"></include>
+        WHERE booking_id IN
+        <foreach collection="bookingIds"
+                 item="bookingId"
+                 open="("
+                 separator=","
+                 close=")">
+            #{bookingId}
+        </foreach>
+        ORDER BY booking_id, start_time, id
+    </select>
+
+    <insert id="insertSeatBookingItem" parameterType="SeatBookingItem" useGeneratedKeys="true" keyProperty="id">
+        insert into seat_booking_item
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bookingId != null">booking_id,</if>
+            <if test="slotNo != null">slot_no,</if>
+            <if test="startTime != null">start_time,</if>
+            <if test="endTime != null">end_time,</if>
+            <if test="createTime != null">create_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="bookingId != null">#{bookingId},</if>
+            <if test="slotNo != null">#{slotNo},</if>
+            <if test="startTime != null">#{startTime},</if>
+            <if test="endTime != null">#{endTime},</if>
+            <if test="createTime != null">#{createTime},</if>
+         </trim>
+    </insert>
+
+    <insert id="insertSeatBookingItemBatch"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO seat_booking_item
+        (booking_id, slot_no, start_time, end_time, create_time)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.bookingId}, #{item.slotNo}, #{item.startTime},
+            #{item.endTime}, #{item.createTime})
+        </foreach>
+    </insert>
+
+    <update id="updateSeatBookingItem" parameterType="SeatBookingItem">
+        update seat_booking_item
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="bookingId != null">booking_id = #{bookingId},</if>
+            <if test="slotNo != null">slot_no = #{slotNo},</if>
+            <if test="startTime != null">start_time = #{startTime},</if>
+            <if test="endTime != null">end_time = #{endTime},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteSeatBookingItemById" parameterType="Long">
+        delete from seat_booking_item where id = #{id}
+    </delete>
+
+    <delete id="deleteSeatBookingItemByIds" parameterType="String">
+        delete from seat_booking_item where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

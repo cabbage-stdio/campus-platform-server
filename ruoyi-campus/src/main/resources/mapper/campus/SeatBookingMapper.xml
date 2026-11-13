@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.campus.mapper.SeatBookingMapper">
+    
+    <resultMap type="SeatBooking" id="SeatBookingResult">
+        <result property="id"    column="id"    />
+        <result property="userId"    column="user_id"    />
+        <result property="seatId"    column="seat_id"    />
+        <result property="seatCode"    column="seat_code"    />
+        <result property="bookingDate"    column="booking_date"    />
+        <result property="status"    column="status"    />
+        <result property="cancelTime"    column="cancel_time"    />
+        <result property="cancelReason"    column="cancel_reason"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <!-- 复用原来的预约字段映射，返回类型换成 VO -->
+    <resultMap id="MySeatBookingResult"
+               type="com.ruoyi.campus.vo.MySeatBookingVO"
+               extends="SeatBookingResult">
+    </resultMap>
+
+    <sql id="selectSeatBookingVo">
+        select id, user_id, seat_id, seat_code, booking_date, status, cancel_time, cancel_reason, create_by, create_time, update_by, update_time, remark from seat_booking
+    </sql>
+
+    <select id="selectSeatBookingList" parameterType="SeatBooking" resultMap="SeatBookingResult">
+        <include refid="selectSeatBookingVo"/>
+        <where>  
+            <if test="userId != null "> and user_id = #{userId}</if>
+            <if test="seatCode != null  and seatCode != ''"> and seat_code = #{seatCode}</if>
+            <if test="bookingDate != null "> and booking_date = #{bookingDate}</if>
+            <if test="status != null  and status != ''"> and status = #{status}</if>
+        </where>
+    </select>
+    
+    <select id="selectSeatBookingById" parameterType="Long" resultMap="SeatBookingResult">
+        <include refid="selectSeatBookingVo"/>
+        where id = #{id}
+    </select>
+    <select id="getBookingSeats" resultType="com.ruoyi.campus.domain.SeatBooking">
+
+    </select>
+    <select id="selectMyBookings" resultMap="MySeatBookingResult">
+        <include refid="selectSeatBookingVo"/>
+        WHERE user_id = #{userId}
+        ORDER BY create_time DESC, id DESC
+    </select>
+
+    <insert id="insertSeatBooking" parameterType="SeatBooking" useGeneratedKeys="true" keyProperty="id">
+        insert into seat_booking
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="userId != null">user_id,</if>
+            <if test="seatId != null">seat_id,</if>
+            <if test="seatCode != null">seat_code,</if>
+            <if test="bookingDate != null">booking_date,</if>
+            <if test="status != null">status,</if>
+            <if test="cancelTime != null">cancel_time,</if>
+            <if test="cancelReason != null">cancel_reason,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="remark != null">remark,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="userId != null">#{userId},</if>
+            <if test="seatId != null">#{seatId},</if>
+            <if test="seatCode != null">#{seatCode},</if>
+            <if test="bookingDate != null">#{bookingDate},</if>
+            <if test="status != null">#{status},</if>
+            <if test="cancelTime != null">#{cancelTime},</if>
+            <if test="cancelReason != null">#{cancelReason},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="remark != null">#{remark},</if>
+         </trim>
+    </insert>
+
+    <update id="updateSeatBooking" parameterType="SeatBooking">
+        update seat_booking
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="seatId != null">seat_id = #{seatId},</if>
+            <if test="seatCode != null">seat_code = #{seatCode},</if>
+            <if test="bookingDate != null">booking_date = #{bookingDate},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="cancelTime != null">cancel_time = #{cancelTime},</if>
+            <if test="cancelReason != null">cancel_reason = #{cancelReason},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <update id="cancelBooking" parameterType="SeatBooking">
+        UPDATE seat_booking
+        SET status = '1',
+            cancel_time = #{cancelTime},
+            cancel_reason = #{cancelReason},
+            update_by = #{updateBy},
+            update_time = #{updateTime}
+        WHERE id = #{id}
+          AND user_id = #{userId}
+          AND status = '0'
+    </update>
+
+    <delete id="deleteSeatBookingById" parameterType="Long">
+        delete from seat_booking where id = #{id}
+    </delete>
+
+    <delete id="deleteSeatBookingByIds" parameterType="String">
+        delete from seat_booking where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>
