@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.campus.mapper.RepairDeviceModelMapper">
+    
+    <resultMap type="RepairDeviceModel" id="RepairDeviceModelResult">
+        <result property="id"    column="id"    />
+        <result property="manufacturer"    column="manufacturer"    />
+        <result property="modelCode"    column="model_code"    />
+        <result property="modelName"    column="model_name"    />
+        <result property="deviceType"    column="device_type"    />
+        <result property="status"    column="status"    />
+        <result property="remark"    column="remark"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectRepairDeviceModelVo">
+        select id, manufacturer, model_code, model_name, device_type, status, remark, create_by, create_time, update_by, update_time from repair_device_model
+    </sql>
+
+    <select id="selectRepairDeviceModelList" parameterType="RepairDeviceModel" resultMap="RepairDeviceModelResult">
+        <include refid="selectRepairDeviceModelVo"/>
+        <where>  
+            <if test="manufacturer != null  and manufacturer != ''"> and manufacturer = #{manufacturer}</if>
+            <if test="modelCode != null  and modelCode != ''"> and model_code = #{modelCode}</if>
+            <if test="modelName != null  and modelName != ''"> and model_name like concat('%', #{modelName}, '%')</if>
+            <if test="deviceType != null  and deviceType != ''"> and device_type = #{deviceType}</if>
+            <if test="status != null  and status != ''"> and status = #{status}</if>
+        </where>
+        order by device_type, manufacturer, model_code
+    </select>
+    
+    <select id="selectRepairDeviceModelById" parameterType="Long" resultMap="RepairDeviceModelResult">
+        <include refid="selectRepairDeviceModelVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertRepairDeviceModel" parameterType="RepairDeviceModel" useGeneratedKeys="true" keyProperty="id">
+        insert into repair_device_model
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="manufacturer != null and manufacturer != ''">manufacturer,</if>
+            <if test="modelCode != null and modelCode != ''">model_code,</if>
+            <if test="modelName != null and modelName != ''">model_name,</if>
+            <if test="deviceType != null and deviceType != ''">device_type,</if>
+            <if test="status != null and status != ''">status,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="manufacturer != null and manufacturer != ''">#{manufacturer},</if>
+            <if test="modelCode != null and modelCode != ''">#{modelCode},</if>
+            <if test="modelName != null and modelName != ''">#{modelName},</if>
+            <if test="deviceType != null and deviceType != ''">#{deviceType},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateRepairDeviceModel" parameterType="RepairDeviceModel">
+        update repair_device_model
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="manufacturer != null and manufacturer != ''">manufacturer = #{manufacturer},</if>
+            <if test="modelCode != null and modelCode != ''">model_code = #{modelCode},</if>
+            <if test="modelName != null and modelName != ''">model_name = #{modelName},</if>
+            <if test="deviceType != null and deviceType != ''">device_type = #{deviceType},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteRepairDeviceModelById" parameterType="Long">
+        delete from repair_device_model where id = #{id}
+    </delete>
+
+    <delete id="deleteRepairDeviceModelByIds" parameterType="String">
+        delete from repair_device_model where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>
