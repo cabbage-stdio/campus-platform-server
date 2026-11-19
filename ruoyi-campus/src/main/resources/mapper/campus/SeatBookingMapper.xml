@@ -20,6 +20,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="remark"    column="remark"    />
     </resultMap>
 
+    <resultMap id="SeatBookingVOResult"
+               type="com.ruoyi.campus.vo.SeatBookingVO"
+               extends="SeatBookingResult">
+        <result property="userName" column="user_name"/>
+        <result property="nickName" column="nick_name"/>
+    </resultMap>
+
     <!-- 复用原来的预约字段映射，返回类型换成 VO -->
     <resultMap id="MySeatBookingResult"
                type="com.ruoyi.campus.vo.MySeatBookingVO"
@@ -30,19 +37,42 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         select id, user_id, seat_id, seat_code, booking_date, status, cancel_time, cancel_reason, create_by, create_time, update_by, update_time, remark from seat_booking
     </sql>
 
-    <select id="selectSeatBookingList" parameterType="SeatBooking" resultMap="SeatBookingResult">
-        <include refid="selectSeatBookingVo"/>
-        <where>  
-            <if test="userId != null "> and user_id = #{userId}</if>
-            <if test="seatCode != null  and seatCode != ''"> and seat_code = #{seatCode}</if>
-            <if test="bookingDate != null "> and booking_date = #{bookingDate}</if>
-            <if test="status != null  and status != ''"> and status = #{status}</if>
+    <select id="selectSeatBookingList"
+            parameterType="com.ruoyi.campus.dto.SeatBookingQueryDTO"
+            resultMap="SeatBookingVOResult">
+        SELECT b.id, b.user_id, b.seat_id, b.seat_code,
+        b.booking_date, b.status, b.cancel_time, b.cancel_reason,
+        b.create_by, b.create_time, b.update_by, b.update_time, b.remark,
+        u.user_name, u.nick_name
+        FROM seat_booking b
+        LEFT JOIN sys_user u ON u.user_id = b.user_id
+        <where>
+            <if test="userId != null">
+                AND b.user_id = #{userId}
+            </if>
+            <if test="userName != null and userName != ''">
+                AND u.user_name = #{userName}
+            </if>
+            <if test="seatCode != null and seatCode != ''">
+                AND b.seat_code = #{seatCode}
+            </if>
+            <if test="bookingDate != null">
+                AND b.booking_date = #{bookingDate}
+            </if>
+            <if test="status != null and status != ''">
+                AND b.status = #{status}
+            </if>
         </where>
+        ORDER BY b.create_time DESC, b.id DESC
     </select>
-    
-    <select id="selectSeatBookingById" parameterType="Long" resultMap="SeatBookingResult">
-        <include refid="selectSeatBookingVo"/>
-        where id = #{id}
+
+    <select id="selectSeatBookingById"
+            parameterType="Long"
+            resultMap="SeatBookingVOResult">
+        SELECT b.*, u.user_name, u.nick_name
+        FROM seat_booking b
+        LEFT JOIN sys_user u ON u.user_id = b.user_id
+        WHERE b.id = #{id}
     </select>
     <select id="getBookingSeats" resultType="com.ruoyi.campus.domain.SeatBooking">
 

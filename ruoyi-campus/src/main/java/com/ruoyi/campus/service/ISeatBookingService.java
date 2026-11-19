@@ -5,8 +5,10 @@ import com.ruoyi.campus.domain.SeatBooking;
 import com.ruoyi.campus.dto.SeatBookingCancelDTO;
 import com.ruoyi.campus.dto.SeatBookingCreateDTO;
 import com.ruoyi.campus.dto.SeatBookingListDTO;
+import com.ruoyi.campus.dto.SeatBookingQueryDTO;
 import com.ruoyi.campus.vo.MySeatBookingVO;
 import com.ruoyi.campus.vo.SeatBookingListVO;
+import com.ruoyi.campus.vo.SeatBookingVO;
 
 /**
  * 座位预约Service接口
@@ -22,15 +24,15 @@ public interface ISeatBookingService
      * @param id 座位预约主键
      * @return 座位预约
      */
-    public SeatBooking selectSeatBookingById(Long id);
+    public SeatBookingVO selectSeatBookingById(Long id);
 
     /**
      * 查询座位预约列表
      * 
-     * @param seatBooking 座位预约列表查询条件
+     * @param seatBookingQueryDTO 座位预约列表查询条件
      * @return 座位预约集合
      */
-    public List<SeatBooking> selectSeatBookingList(SeatBooking seatBooking);
+    public List<SeatBookingVO> selectSeatBookingList(SeatBookingQueryDTO seatBookingQueryDTO);
 
     /**
      * 新增座位预约
@@ -87,4 +89,8 @@ public interface ISeatBookingService
     int cancelBooking(Long id, SeatBookingCancelDTO seatBookingCancelDTO);
 
     List<MySeatBookingVO> getMyBookings();
+
+    int adminCancelBooking(Long bookingId, SeatBookingCancelDTO dto);
+
+    int updateBookingRemark(Long bookingId, String remark);
 }

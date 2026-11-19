@@ -14,12 +14,14 @@ import com.ruoyi.campus.domain.SeatSlotOccupancy;
 import com.ruoyi.campus.dto.SeatBookingCancelDTO;
 import com.ruoyi.campus.dto.SeatBookingCreateDTO;
 import com.ruoyi.campus.dto.SeatBookingListDTO;
+import com.ruoyi.campus.dto.SeatBookingQueryDTO;
 import com.ruoyi.campus.enums.SeatTimeSlot;
 import com.ruoyi.campus.mapper.SeatBookingItemMapper;
 import com.ruoyi.campus.mapper.SeatMapper;
 import com.ruoyi.campus.mapper.SeatSlotOccupancyMapper;
 import com.ruoyi.campus.vo.MySeatBookingVO;
 import com.ruoyi.campus.vo.SeatBookingListVO;
+import com.ruoyi.campus.vo.SeatBookingVO;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.SecurityUtils;
@@ -55,9 +57,14 @@ public class SeatBookingServiceImpl implements ISeatBookingService
     @Autowired
     private SeatSlotOccupancyMapper seatSlotOccupancyMapper;
 
-    public List<SeatBooking> selectSeatBookingList(SeatBooking seatBooking)
+    /**
+     * 查询座位预约
+     * @param seatBookingQueryDTO
+     * @return
+     */
+    public List<SeatBookingVO> selectSeatBookingList(SeatBookingQueryDTO seatBookingQueryDTO)
     {
-        return seatBookingMapper.selectSeatBookingList(seatBooking);
+        return seatBookingMapper.selectSeatBookingList(seatBookingQueryDTO);
     }
 
     /**
@@ -67,9 +74,14 @@ public class SeatBookingServiceImpl implements ISeatBookingService
      * @return 座位预约
      */
     @Override
-    public SeatBooking selectSeatBookingById(Long id)
-    {
-        return seatBookingMapper.selectSeatBookingById(id);
+    public SeatBookingVO selectSeatBookingById(Long id) {
+        SeatBookingVO booking = seatBookingMapper.selectSeatBookingById(id);
+        if (booking == null) {
+            throw new ServiceException("预约记录不存在");
+        }
+
+        booking.setItems(seatBookingItemMapper.selectByBookingIds(List.of(id)));
+        return booking;
     }
 
     /**
@@ -132,15 +144,41 @@ public class SeatBookingServiceImpl implements ISeatBookingService
     @Transactional(rollbackFor = Exception.class)
     public int createBooking(SeatBookingCreateDTO seatBookingCreateDTO) {
         log.info("开始创建预约信息{}", seatBookingCreateDTO);
-        //创建预约主表的信息
-        Seat seat = seatMapper.selectSeatById(seatBookingCreateDTO.getSeatId());
-        if(seat == null) {
-            throw new ServiceException("所选择的座位不存在");
+
+        //判断预约时间和时段是否在有效预约日期内
+        ZoneId zone = ZoneId.of("Asia/Shanghai");
+        LocalDateTime now = LocalDateTime.now(zone);
+        LocalDate bookingDate = seatBookingCreateDTO.getBookingDate();
+        List<Integer> slotNos = seatBookingCreateDTO.getSlotNos();
+        int maxDays = now.toLocalTime().isBefore(LocalTime.of(22, 0)) ? 2 : 3;
+        long days = ChronoUnit.DAYS.between(now.toLocalDate(), bookingDate);
+
+        if(days < 0 || days > maxDays)
+            throw new ServiceException("所选日期不在有效预约日期内");
+
+        if(new HashSet<>(slotNos).size() != slotNos.size())
+            throw new ServiceException("预约时段有重复");
+
+        //判断预约时段是否在有效时段内
+        for (Integer slotNo : slotNos) {
+            SeatTimeSlot seatTimeSlot = SeatTimeSlot.fromCode(slotNo);
+            LocalDateTime endTime = seatTimeSlot.getEndTime(bookingDate);
+
+            if (endTime.isBefore(now)) {
+                throw new ServiceException("所选时段已经结束，请重新选择");
+            }
         }
 
+
+        //创建预约主表的信息
+        Seat seat = seatMapper.selectSeatById(seatBookingCreateDTO.getSeatId());
+
+        //判断座位是否存在
+        if(seat == null)
+            throw new ServiceException("所选择的座位不存在");
         if(!"0".equals(seat.getStatus()))
             throw new ServiceException("所选择的座位已停用");
-
+        //创建预约主表的插入信息
         SeatBooking seatBooking= SeatBooking.builder()
                 .seatCode(seat.getSeatCode())
                 .userId(SecurityUtils.getUserId())
@@ -158,36 +196,16 @@ public class SeatBookingServiceImpl implements ISeatBookingService
         if(insertSeatBooking != 1)
             throw new ServiceException("预约主表创建失败");
 
-        //创建预约详情时段
-        ZoneId zone = ZoneId.of("Asia/Shanghai");
-        LocalDateTime now = LocalDateTime.now();
-        LocalDate bookingDate = seatBookingCreateDTO.getBookingDate();
-        List<Integer> slotNos = seatBookingCreateDTO.getSlotNos();
 
-        //判断预约时间是否合法
-        int maxDays = now.toLocalTime().isBefore(LocalTime.of(22, 0)) ? 2 : 3;
-
-        long days = ChronoUnit.DAYS.between(now.toLocalDate(), bookingDate);
-
-        if(days < 0 || days > maxDays)
-            throw new ServiceException("所选日期不在有效预约日期内");
-
-        if(new HashSet<>(slotNos).size() != slotNos.size())
-            throw new ServiceException("预约时段有重复");
-
-
-
+        //创建预约详情时段列表
         List<SeatBookingItem> seatBookingItems = new ArrayList<>();
 
+        //遍历预约时段列表
         for (Integer slotNo : slotNos) {
             SeatTimeSlot seatTimeSlot = SeatTimeSlot.fromCode(slotNo);
 
             LocalDateTime startTime = seatTimeSlot.getStartTime(bookingDate);
             LocalDateTime endTime = seatTimeSlot.getEndTime(bookingDate);
-
-            if (endTime.isBefore(now)) {
-                throw new ServiceException("所选时段已经结束，请重新选择");
-            }
 
             SeatBookingItem item = SeatBookingItem.builder()
                     .bookingId(seatBooking.getId())
@@ -199,17 +217,16 @@ public class SeatBookingServiceImpl implements ISeatBookingService
             item.setUpdateTime(DateUtils.getNowDate());
             item.setCreateBy(SecurityUtils.getUsername());
             item.setUpdateBy(SecurityUtils.getUsername());
-
             seatBookingItems.add(item);
         }
 
         int insertSeatBookingItems = seatBookingItemMapper.insertSeatBookingItemBatch(seatBookingItems);
-
         if(insertSeatBookingItems != seatBookingItems.size())
             throw new ServiceException("预约详情时段创建失败");
 
-        //创建座位占用信息
 
+
+        //创建座位占用信息
         List<SeatSlotOccupancy> seatSlotOccupancies = new ArrayList<>();
 
         for (SeatBookingItem seatBookingItem : seatBookingItems) {
@@ -251,7 +268,7 @@ public class SeatBookingServiceImpl implements ISeatBookingService
         //获取时区
         ZoneId zone = ZoneId.of("Asia/Shanghai");
         //获取当前时间
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(zone);
         //获取预约时间
         LocalDate bookingDate = seatBookingListDTO.getBookingDate();
         //获取最大预约天数
@@ -316,76 +333,13 @@ public class SeatBookingServiceImpl implements ISeatBookingService
      * 取消座位预约信息
      *
      * @param bookingId 预约主键
-     * @param seatBookingCancelDTO 预约取消信息
+     * @param dto 预约取消信息
      * @return 结果
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public int cancelBooking(Long bookingId, SeatBookingCancelDTO seatBookingCancelDTO) {
-        log.info("开始取消预约信息{}", bookingId);
-
-        // 获取旧的预约信息
-        SeatBooking oldSeatBooking = seatBookingMapper.selectSeatBookingById(bookingId);
-        // 判断预约信息是否存在
-        if (oldSeatBooking == null) {
-            throw new ServiceException("预约信息不存在");
-        }
-
-        if (!oldSeatBooking.getStatus().equals("0")) {
-            throw new ServiceException("预约信息已处理，请勿重复操作");
-        }
-
-        if (!oldSeatBooking.getUserId().equals(SecurityUtils.getUserId()))
-            throw new ServiceException("无权限取消他人预约");
-
-        //判断取消时间是否合法
-        SeatBookingItem seatBookingItem=new SeatBookingItem();
-        seatBookingItem.setBookingId(bookingId);
-
-        List<SeatBookingItem> seatBookingItems = seatBookingItemMapper.selectSeatBookingItemList(seatBookingItem);
-
-        if (seatBookingItems.isEmpty()) {
-            throw new ServiceException("预约时段信息不存在");
-        }
-
-        Date now =DateUtils.getNowDate();
-
-        for (SeatBookingItem bookingItem : seatBookingItems) {
-            Date endTime=bookingItem.getEndTime();
-
-            if(endTime==null){
-                throw new ServiceException("预约时段结束时间异常");
-            }
-
-            if (endTime.before(now)) {
-                throw new ServiceException("预约时段已结束，无法取消");
-            }
-        }
-
-
-        // 创建新预约信息对象
-        SeatBooking newSeatBooking = SeatBooking.builder()
-                .id(oldSeatBooking.getId())
-                .userId(SecurityUtils.getUserId())
-                .cancelReason(seatBookingCancelDTO.getCancelReason())
-                .cancelTime(DateUtils.getNowDate())
-                .build();
-        newSeatBooking.setUpdateBy(SecurityUtils.getUsername());
-        newSeatBooking.setUpdateTime(DateUtils.getNowDate());
-
-        int cancelBooking = seatBookingMapper.cancelBooking(newSeatBooking);
-        // 判断预约状态是否已变化
-        if (cancelBooking != 1) {
-            throw new ServiceException("预约状态已变化，请刷新后重试");
-        }
-
-        // 删除座位占用
-        int deleteByBookingId = seatSlotOccupancyMapper.deleteByBookingId(bookingId);
-        if (deleteByBookingId ==0) {
-            throw new ServiceException("座位占用信息删除失败,请刷新后重试");
-        }
-
-        return cancelBooking;
+    public int cancelBooking(Long bookingId, SeatBookingCancelDTO dto) {
+        return cancelBookingInternal(bookingId, dto.getCancelReason(), false);
     }
 
     /**
@@ -438,4 +392,79 @@ public class SeatBookingServiceImpl implements ISeatBookingService
     }
 
 
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int adminCancelBooking(Long bookingId, SeatBookingCancelDTO dto) {
+        String reason = dto.getCancelReason();
+        if (reason == null || reason.isBlank()) {
+            throw new ServiceException("请填写管理员取消原因");
+        }
+
+        return cancelBookingInternal(bookingId, reason.trim(), true);
+    }
+
+    private int cancelBookingInternal(
+            Long bookingId, String reason, boolean adminOperation) {
+        SeatBooking booking = seatBookingMapper.selectSeatBookingById(bookingId);
+        if (booking == null) {
+            throw new ServiceException("预约信息不存在");
+        }
+
+        if (!adminOperation && !Objects.equals(booking.getUserId(), SecurityUtils.getUserId())) {
+            throw new ServiceException("无权限取消他人预约");
+        }
+
+        if (!"0".equals(booking.getStatus())) {
+            throw new ServiceException("预约信息已处理，请勿重复操作");
+        }
+
+        SeatBookingItem query = new SeatBookingItem();
+        query.setBookingId(bookingId);
+        List<SeatBookingItem> items = seatBookingItemMapper.selectSeatBookingItemList(query);
+        if (items.isEmpty()) {
+            throw new ServiceException("预约时段信息不存在");
+        }
+
+        Date now = DateUtils.getNowDate();
+        for (SeatBookingItem item : items) {
+            Date endTime = item.getEndTime();
+            if (endTime == null) {
+                throw new ServiceException("预约时段结束时间异常");
+            }
+            if (endTime.before(now)) {
+                throw new ServiceException("预约时段已结束，无法取消");
+            }
+        }
+
+        SeatBooking update = SeatBooking.builder()
+                .id(bookingId)
+                .userId(booking.getUserId())
+                .cancelReason(reason)
+                .cancelTime(now)
+                .build();
+        update.setUpdateBy(SecurityUtils.getUsername());
+        update.setUpdateTime(now);
+
+        int updated = seatBookingMapper.cancelBooking(update);
+        if (updated != 1) {
+            throw new ServiceException("预约状态已变化，请刷新后重试");
+        }
+
+        int deleted = seatSlotOccupancyMapper.deleteByBookingId(bookingId);
+        if (deleted == 0) {
+            throw new ServiceException("释放座位占用失败，请刷新后重试");
+        }
+
+        return updated;
+    }
+
+    @Override
+    public int updateBookingRemark(Long bookingId, String remark) {
+        SeatBooking update = SeatBooking.builder().id(bookingId).build();
+        update.setRemark(remark.trim());
+        update.setUpdateBy(SecurityUtils.getUsername());
+        update.setUpdateTime(DateUtils.getNowDate());
+        return seatBookingMapper.updateSeatBooking(update);
+    }
 }

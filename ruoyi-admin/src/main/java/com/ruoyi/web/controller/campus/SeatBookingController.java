@@ -2,10 +2,9 @@ package com.ruoyi.web.controller.campus;
 
 import java.util.List;
 
-import com.ruoyi.campus.dto.SeatBookingCancelDTO;
-import com.ruoyi.campus.dto.SeatBookingCreateDTO;
-import com.ruoyi.campus.dto.SeatBookingListDTO;
+import com.ruoyi.campus.dto.*;
 import com.ruoyi.campus.vo.MySeatBookingVO;
+import com.ruoyi.campus.vo.SeatBookingVO;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -45,10 +44,10 @@ public class SeatBookingController extends BaseController
      */
     @PreAuthorize("@ss.hasPermi('campus:booking:list')")
     @GetMapping("/list")
-    public TableDataInfo list(SeatBooking seatBooking)
+    public TableDataInfo list(SeatBookingQueryDTO seatBookingQueryDTO)
     {
         startPage();
-        List<SeatBooking> list = seatBookingService.selectSeatBookingList(seatBooking);
+        List<SeatBookingVO> list = seatBookingService.selectSeatBookingList(seatBookingQueryDTO);
         return getDataTable(list);
     }
 
@@ -58,11 +57,10 @@ public class SeatBookingController extends BaseController
     @PreAuthorize("@ss.hasPermi('campus:booking:export')")
     @Log(title = "座位预约", businessType = BusinessType.EXPORT)
     @PostMapping("/export")
-    public void export(HttpServletResponse response, SeatBooking seatBooking)
-    {
-        List<SeatBooking> list = seatBookingService.selectSeatBookingList(seatBooking);
-        ExcelUtil<SeatBooking> util = new ExcelUtil<SeatBooking>(SeatBooking.class);
-        util.exportExcel(response, list, "座位预约数据");
+    public void export(HttpServletResponse response, SeatBookingQueryDTO seatBookingQueryDTO) {
+        List<SeatBookingVO> rows = seatBookingService.selectSeatBookingList(seatBookingQueryDTO);
+        ExcelUtil<SeatBookingVO> util = new ExcelUtil<>(SeatBookingVO.class);
+        util.exportExcel(response, rows, "座位预约数据");
     }
 
     /**
@@ -89,7 +87,8 @@ public class SeatBookingController extends BaseController
     /**
      * 查询楼层所有座位状况列表
      */
-    @PreAuthorize("@ss.hasPermi('campus:booking:list')")
+    @PreAuthorize("@ss.hasPermi('campus:booking:seats')")
+    @Log(title = "查询楼层所有座位状况", businessType = BusinessType.OTHER)
     @GetMapping("/seats")
     public AjaxResult getBookingSeats(@Valid SeatBookingListDTO seatBookingListDTO)
     {
@@ -102,18 +101,42 @@ public class SeatBookingController extends BaseController
      * @param seatBookingCancelDTO
      * @return
      */
+    @PreAuthorize("@ss.hasPermi('campus:booking:cancel')")
     @Log(title = "取消预约", businessType = BusinessType.UPDATE)
     @PutMapping("/{id}/cancel")
     public AjaxResult cancelSeatBooking(@PathVariable("id") Long id,@Valid @RequestBody SeatBookingCancelDTO seatBookingCancelDTO){
         return toAjax(seatBookingService.cancelBooking(id, seatBookingCancelDTO));
     }
 
+    /**
+     * 查询我的预约列表
+     * @return
+     */
+    @PreAuthorize("@ss.hasPermi('campus:booking:my')")
     @Log(title = "我的预约", businessType = BusinessType.OTHER)
     @GetMapping("/my")
     public TableDataInfo getMySeatBookings() {
         startPage();
         List<MySeatBookingVO> list = seatBookingService.getMyBookings();
         return getDataTable(list);
+    }
+
+    @PreAuthorize("@ss.hasPermi('campus:booking:manage')")
+    @Log(title = "管理员取消座位预约", businessType = BusinessType.UPDATE)
+    @PutMapping("/{id}/admin/cancel")
+    public AjaxResult adminCancelBooking(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody SeatBookingCancelDTO dto) {
+        return toAjax(seatBookingService.adminCancelBooking(id, dto));
+    }
+
+    @PreAuthorize("@ss.hasPermi('campus:booking:manage')")
+    @Log(title = "管理员修改预约备注", businessType = BusinessType.UPDATE)
+    @PutMapping("/{id}/admin/remark")
+    public AjaxResult updateBookingRemark(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody SeatBookingRemarkDTO dto) {
+        return toAjax(seatBookingService.updateBookingRemark(id, dto.getRemark()));
     }
 
 

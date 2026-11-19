@@ -2,7 +2,9 @@ package com.ruoyi.campus.mapper;
 
 import java.util.List;
 import com.ruoyi.campus.domain.SeatBooking;
+import com.ruoyi.campus.dto.SeatBookingQueryDTO;
 import com.ruoyi.campus.vo.MySeatBookingVO;
+import com.ruoyi.campus.vo.SeatBookingVO;
 
 /**
  * 座位预约Mapper接口
@@ -18,15 +20,15 @@ public interface SeatBookingMapper
      * @param id 座位预约主键
      * @return 座位预约
      */
-    public SeatBooking selectSeatBookingById(Long id);
+    SeatBookingVO selectSeatBookingById(Long id);
 
     /**
      * 查询座位预约列表
      * 
-     * @param seatBooking 座位预约
+      * @param seatBookingQueryDTO 座位预约查询参数
      * @return 座位预约集合
      */
-    public List<SeatBooking> selectSeatBookingList(SeatBooking seatBooking);
+    public List<SeatBookingVO> selectSeatBookingList(SeatBookingQueryDTO seatBookingQueryDTO);
 
     /**
      * 新增座位预约

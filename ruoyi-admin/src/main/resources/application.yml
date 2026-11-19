@@ -142,3 +142,9 @@ xss:
   excludes: /system/notice
   # 匹配链接
   urlPatterns: /system/*,/monitor/*,/tool/*
+
+aliyun:
+  oss:
+    region: cn-beijing
+    endpoint: https://oss-cn-beijing.aliyuncs.com
+    bucket: campus-platform-server

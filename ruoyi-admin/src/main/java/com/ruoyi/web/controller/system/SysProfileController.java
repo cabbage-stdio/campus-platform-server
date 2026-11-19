@@ -1,5 +1,6 @@
 package com.ruoyi.web.controller.system;
 
+import java.nio.file.Path;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.config.RuoYiConfig;
+import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.domain.entity.SysUser;
@@ -20,11 +22,10 @@ import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
-import com.ruoyi.common.utils.file.FileUploadUtils;
 import com.ruoyi.common.utils.file.FileUtils;
-import com.ruoyi.common.utils.file.MimeTypeUtils;
 import com.ruoyi.framework.web.service.TokenService;
 import com.ruoyi.system.service.ISysUserService;
+import com.ruoyi.web.core.OssImageService;
 
 /**
  * 个人信息 业务处理
@@ -40,6 +41,9 @@ public class SysProfileController extends BaseController
 
     @Autowired
     private TokenService tokenService;
+
+    @Autowired
+    private OssImageService imageService;
 
     /**
      * 个人信息
@@ -128,14 +132,22 @@ public class SysProfileController extends BaseController
         if (!file.isEmpty())
         {
             LoginUser loginUser = getLoginUser();
-            String avatar = FileUploadUtils.upload(RuoYiConfig.getAvatarPath(), file, MimeTypeUtils.IMAGE_EXTENSION, true);
-            if (userService.updateUserAvatar(loginUser.getUserId(), avatar))
+            Long userId = loginUser.getUserId();
+            String avatar = imageService.uploadAvatar(userId, file);
+            if (userService.updateUserAvatar(userId, avatar))
             {
                 String oldAvatar = loginUser.getUser().getAvatar();
-                if (StringUtils.isNotEmpty(oldAvatar))
+                if (oldAvatar != null && oldAvatar.startsWith(Constants.RESOURCE_PREFIX + "/avatar/"))
                 {
-                    FileUtils.deleteFile(RuoYiConfig.getProfile() + FileUtils.stripPrefix(oldAvatar));
+                    Path avatarDirectory = Path.of(RuoYiConfig.getAvatarPath()).toAbsolutePath().normalize();
+                    Path oldFile = Path.of(RuoYiConfig.getProfile() + FileUtils.stripPrefix(oldAvatar))
+                            .toAbsolutePath().normalize();
+                    if (oldFile.startsWith(avatarDirectory) && !oldFile.equals(avatarDirectory))
+                    {
+                        FileUtils.deleteFile(oldFile.toString());
+                    }
                 }
+                imageService.deleteAvatar(userId, oldAvatar);
                 AjaxResult ajax = AjaxResult.success();
                 ajax.put("imgUrl", avatar);
                 // 更新缓存用户头像
@@ -143,6 +155,7 @@ public class SysProfileController extends BaseController
                 tokenService.setLoginUser(loginUser);
                 return ajax;
             }
+            imageService.deleteAvatar(userId, avatar);
         }
         return error("上传图片异常，请联系管理员");
     }
